@@ -6,9 +6,10 @@ export interface ContainerAppArgs {
   resourceGroupName: pulumi.Input<string>;
   location: pulumi.Input<string>;
   image: pulumi.Input<string>;
-  cpu?: number;
-  memory?: number;
+  cpu?: pulumi.Input<number>;      
+  memory?: pulumi.Input<number>;   
   environmentId: pulumi.Input<string>;
+  subnetId?: pulumi.Input<string>; // Optional: for VNet integration
 }
 
 export class ContainerAppComponent extends pulumi.ComponentResource {
@@ -29,6 +30,12 @@ export class ContainerAppComponent extends pulumi.ComponentResource {
           external: true,
           targetPort: 80,
         },
+        // VNet integration if subnetId is provided
+        ...(args.subnetId && {
+          vnetConfiguration: {
+            infrastructureSubnetId: args.subnetId,
+          },
+        }),
       },
       template: {
         containers: [{
@@ -36,7 +43,7 @@ export class ContainerAppComponent extends pulumi.ComponentResource {
           image: args.image,
           resources: {
             cpu: cpu,
-            memory: `${memory}Gi`,
+            memory: pulumi.interpolate`${memory}Gi`, // Now supports dynamic values
           },
         }],
         scale: {
