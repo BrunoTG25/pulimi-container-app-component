@@ -12,30 +12,10 @@ export interface NetworkComponentArgs {
 export class NetworkComponent extends pulumi.ComponentResource {
     public readonly subnetId: pulumi.Output<string>;
 
-      constructor(name: string, args: NetworkComponentArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args: NetworkComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("custom:network:NetworkComponent", name, {}, opts);
 
-        //Creo la Vnet, Subnet y NSG
-
-
-        const vnet = new azure.network.VirtualNetwork(`${name}-vnet`, {
-            resourceGroupName: args.resourceGroupName,
-            location: args.location,
-            virtualNetworkName: args.vnetName,
-            addressSpace: { addressPrefixes: ["10.0.0.0/16"] },
-        }, { parent: this });
-
-           const subnet = new azure.network.Subnet(`${name}-subnet`, {
-            resourceGroupName: args.resourceGroupName,
-            virtualNetworkName: vnet.name,
-            subnetName: args.subnetName,
-            addressPrefix: "10.0.0.0/24",
-            delegations: [{
-                name: "delegation",
-                serviceName: "Microsoft.App/managedEnvironments",
-            }],
-        }, { parent: this });
-
+        // 1. Creo el NSG primero (porque lo necesito para asociarlo luego)
         const nsg = new azure.network.NetworkSecurityGroup(`${name}-nsg`, {
             resourceGroupName: args.resourceGroupName,
             location: args.location,
@@ -53,14 +33,30 @@ export class NetworkComponent extends pulumi.ComponentResource {
             }],
         }, { parent: this });
 
+        // 2. Creo la VNet
+        const vnet = new azure.network.VirtualNetwork(`${name}-vnet`, {
+            resourceGroupName: args.resourceGroupName,
+            location: args.location,
+            virtualNetworkName: args.vnetName,
+            addressSpace: { addressPrefixes: ["10.0.0.0/16"] },
+        }, { parent: this });
 
-        // Asocio NSG a la Subnet
-          new azure.network.SubnetNetworkSecurityGroupAssociation(`${name}-subnet-nsg`, {
-            subnetId: subnet.id,
-            networkSecurityGroupId: nsg.id,
-        }, { parent: this }); 
+        // 3. Creo la Subnet y le asocio el NSG
+        const subnet = new azure.network.Subnet(`${name}-subnet`, {
+            resourceGroupName: args.resourceGroupName,
+            virtualNetworkName: vnet.name,
+            subnetName: args.subnetName,
+            addressPrefix: "10.0.0.0/24",
+            delegations: [{
+                name: "delegation",
+                serviceName: "Microsoft.App/environments", // <-- Correct value for Azure Container Apps
+            }],
+            networkSecurityGroup: {
+                id: nsg.id,
+            },
+        }, { parent: this });
 
-        
+        // 4. Exporto el ID de la Subnet
         this.subnetId = subnet.id;
 
         this.registerOutputs({
@@ -68,4 +64,3 @@ export class NetworkComponent extends pulumi.ComponentResource {
         });
     }
 }
-

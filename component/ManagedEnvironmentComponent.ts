@@ -10,6 +10,7 @@ export interface ManagedEnvironmentArgs {
 
 export class ManagedEnvironmentComponent extends pulumi.ComponentResource {
     public readonly environment: azure.app.ManagedEnvironment;
+    public readonly environmentId: pulumi.Output<string>; 
 
     constructor(name: string, args: ManagedEnvironmentArgs, opts?: pulumi.ComponentResourceOptions) {
         super("custom:container:ManagedEnvironmentComponent", name, {}, opts);
@@ -23,6 +24,8 @@ export class ManagedEnvironmentComponent extends pulumi.ComponentResource {
                 infrastructureSubnetId: args.subnetId,
             },
         }, { parent: this });
+
+        this.environmentId = this.environment.id;
        
         this.registerOutputs({
             environmentId: this.environment.id,

@@ -1,22 +1,23 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as mocks from "@pulumi/pulumi/runtime";
+
+// Set the mocks before importing any Pulumi resources
+beforeAll(() => {
+  class MyMocks implements mocks.Mocks {
+    newResource(type: string, name: string, inputs: any): { id: string, state: any } {
+      return {
+        id: `${name}_id`,
+        state: inputs,
+      };
+    }
+    call(args: mocks.CallArgs) {
+      return args.inputs;
+    }
+  }
+  pulumi.runtime.setMocks(new MyMocks(), "project", "stack", false);
+});
+
 import { ContainerAppComponent } from "../component/ContainerAppComponent";
-
-// Mock implementation
-class MyMocks implements mocks.Mocks {
-  newResource(type: string, name: string, inputs: any): { id: string, state: any } {
-    return {
-      id: `${name}_id`,
-      state: inputs,
-    };
-  }
-  call(args: mocks.CallArgs) {
-    return args.inputs;
-  }
-}
-
-// Set the mocks before running the tests
-pulumi.runtime.setMocks(new MyMocks(), "project", "stack", false);
 
 describe("ContainerAppComponent", () => {
   const baseArgs = {
